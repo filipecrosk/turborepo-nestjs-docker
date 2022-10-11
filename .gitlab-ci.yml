@@ -1,0 +1,35 @@
+image: node:latest
+# To use Remote Caching, uncomment the next lines and follow the steps below.
+# variables:
+#   TURBO_TOKEN: $TURBO_TOKEN
+#   TURBO_TEAM: $TURBO_TEAM
+stages:
+  - build
+  - deploy
+
+build:
+  stage: build
+  script:
+    - yarn install
+    - yarn build
+    - yarn test
+  cache:
+    paths:
+      - node_modules/
+      - .yarn
+
+deploy_staging:
+  stage: deploy
+  environment:
+    name: staging
+  image: google/cloud-sdk:slim
+  before_script:
+    - gcloud auth activate-service-account --key-file $GCP_SERVICE_KEY
+    - gcloud config set project $GCP_PROJECT
+    - gcloud config set run/region $GCP_REGION
+    - gcloud config set run/platform $GCP_RUN_PLATFORM
+    - export CLOUDSDK_CORE_DISABLE_PROMPTS=1
+  script:
+    - gcloud alpha run deploy $GCP_RUN_SERVICE_NAME --image $GCP_IMAGE-$CI_COMMIT_REF_SLUG:$VERSION  --allow-unauthenticated --port=3000
+  only:
+    - staging
