@@ -34,17 +34,18 @@ ENV CLOUD_RUN 1
 ENV PORT 3000
 
 ENV HOST 127.0.0.1
-ENV TYPEORM_HOST 127.0.0.1
+ENV TYPEORM_HOST host.docker.internal
 ENV TYPEORM_PORT 5432
 ENV TYPEORM_USERNAME postgres
+ENV TYPEORM_PASSWORD=
 ENV TYPEORM_DATABASE msgops_prd
 ENV TYPEORM_CONNECTION postgres
-ENV TYPEORM_DRIVER_EXTRA {"charset":"utf8mb4_unicode_ci"}
-ENV TYPEORM_ENTITIES_DIR dist/**/entities
-ENV TYPEORM_ENTITIES dist/**/*.entity.js
+ENV TYPEORM_DRIVER_EXTRA='{"charset":"utf8mb4_unicode_ci"}'
+ENV TYPEORM_ENTITIES_DIR='dist/**/entities'
+ENV TYPEORM_ENTITIES='dist/**/*.entity.js'
 ENV TYPEORM_LOGGING true
 
-ENV REDIS_HOST 127.0.0.1
+ENV REDIS_HOST host.docker.internal
 ENV REDIS_PORT 6379
 
 COPY --from=installer --chown=nestjs:nestjs /app .
