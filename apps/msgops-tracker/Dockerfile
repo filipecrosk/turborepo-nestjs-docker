@@ -1,27 +1,47 @@
-FROM node:16-slim AS builder
+# Create a base section that later steps will use
+FROM node:16-slim AS base
+
+ENV YARN_VERSION 1.22.19
+RUN yarn policies set-version $YARN_VERSION
+
+# RUN apk add git
+# RUN apk update
+
+WORKDIR /app
+
+# Create a layer for pruning the monorepo
+FROM base AS pruner
 WORKDIR /app
 
 RUN yarn global add turbo
 
+# Copy the entire monorepo to the container
+# An alternative would be copying only the desired app, and depended upon packages from the get go and not running turbo prune.
+# This would be faster, but is less modular and requires editing the Dockerfile for each app.
+# Simply personal preference here.
 COPY . .
-
 RUN turbo prune --scope=msgops-tracker --docker
 
-FROM node:16-slim AS installer
+# Create a layer for installing modules
+FROM base AS installer
 WORKDIR /app
 
+# Add lockfile and package.json's of isolated subworkspace
 COPY .gitignore .gitignore
-COPY --from=builder /app/out/json/ .
-COPY --from=builder /app/out/yarn.lock ./yarn.lock
+COPY --from=pruner /app/out/json/ .
+COPY --from=pruner /app/out/yarn.lock ./yarn.lock
 
-RUN yarn install
+# Use pure lockfile for faster install
+RUN yarn install --pure-lockfile
 
 # Build the project
-COPY --from=builder /app/out/full/ .
+# Copy pruned monorepo
+COPY --from=pruner /app/out/full/ .
 COPY turbo.json turbo.json
-RUN yarn turbo run build --filter=msgops-tracker...
+RUN yarn turbo run build --filter=msgops-tracker... --include-dependencies --no-deps
 
-FROM node:16-slim AS runner
+# Combine the layers into a fucntioning app.
+FROM base AS runner
 WORKDIR /app
 
 RUN addgroup --system --gid 1001 nestjs
